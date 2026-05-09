@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "BlastArena Wijchen"
+version = "1.0.0"
+id = "artifacts/blast-arena"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25463
+
+[services.development]
+run = "pnpm --filter @workspace/blast-arena run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/blast-arena", "run", "build" ]
+publicDir = "artifacts/blast-arena/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25463"
+BASE_PATH = "/"

@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: BlastArena Wijchen API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: contact
+    description: Contact/interest form submissions
+  - name: slots
+    description: Arena slot management
+  - name: admin
+    description: Admin panel operations
 paths:
   /healthz:
     get:
@@ -24,7 +30,197 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /contact:
+    post:
+      operationId: submitContact
+      tags: [contact]
+      summary: Submit interest/contact form
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactInput"
+      responses:
+        "201":
+          description: Contact submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+        "400":
+          description: Validation error
+
+  /admin/contacts:
+    get:
+      operationId: listContacts
+      tags: [admin]
+      summary: List all contact submissions (admin)
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: List of contacts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Contact"
+        "401":
+          description: Unauthorized
+
+  /admin/contacts/{id}:
+    delete:
+      operationId: deleteContact
+      tags: [admin]
+      summary: Delete a contact submission (admin)
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  /slots:
+    get:
+      operationId: listSlots
+      tags: [slots]
+      summary: List available arena slots
+      responses:
+        "200":
+          description: List of slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Slot"
+
+  /admin/slots:
+    get:
+      operationId: listAdminSlots
+      tags: [admin]
+      summary: List all slots (admin)
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: List of slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Slot"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: createSlot
+      tags: [admin]
+      summary: Create a new slot (admin)
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SlotInput"
+      responses:
+        "201":
+          description: Slot created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Slot"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+
+  /admin/slots/{id}:
+    patch:
+      operationId: updateSlot
+      tags: [admin]
+      summary: Update a slot (admin)
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SlotUpdate"
+      responses:
+        "200":
+          description: Slot updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Slot"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteSlot
+      tags: [admin]
+      summary: Delete a slot (admin)
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get admin dashboard statistics
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+        "401":
+          description: Unauthorized
+
 components:
+  securitySchemes:
+    clerkAuth:
+      type: http
+      scheme: bearer
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +230,122 @@ components:
       required:
         - status
 
+    Contact:
+      type: object
+      required: [id, name, email, message, type, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        message:
+          type: string
+        type:
+          type: string
+          enum: [warehouse, general, partnership]
+        warehouseSize:
+          type: ["string", "null"]
+        warehouseLocation:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ContactInput:
+      type: object
+      required: [name, email, message, type]
+      properties:
+        name:
+          type: string
+          minLength: 2
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        message:
+          type: string
+          minLength: 10
+        type:
+          type: string
+          enum: [warehouse, general, partnership]
+        warehouseSize:
+          type: string
+        warehouseLocation:
+          type: string
+
+    Slot:
+      type: object
+      required: [id, title, startTime, endTime, capacity, bookedCount, status]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        capacity:
+          type: integer
+        bookedCount:
+          type: integer
+        status:
+          type: string
+          enum: [open, full, cancelled]
+        notes:
+          type: ["string", "null"]
+
+    SlotInput:
+      type: object
+      required: [title, startTime, endTime, capacity]
+      properties:
+        title:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        capacity:
+          type: integer
+          minimum: 1
+        notes:
+          type: string
+
+    SlotUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        capacity:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [open, full, cancelled]
+        notes:
+          type: string
+
+    AdminStats:
+      type: object
+      required: [totalContacts, warehouseContacts, totalSlots, openSlots]
+      properties:
+        totalContacts:
+          type: integer
+        warehouseContacts:
+          type: integer
+        totalSlots:
+          type: integer
+        openSlots:
+          type: integer
+        recentContacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Contact"
