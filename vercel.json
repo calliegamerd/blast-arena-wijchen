@@ -1,7 +1,12 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter @workspace/blast-arena run build",
+  "buildCommand": "pnpm --filter @workspace/api-server run build:vercel && pnpm --filter @workspace/blast-arena run build",
   "outputDirectory": "artifacts/blast-arena/dist/public",
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "api/**"
+    }
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
