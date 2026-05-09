@@ -4,6 +4,7 @@ import { SubmitContactBody } from "@workspace/api-zod";
 import { desc, eq } from "drizzle-orm";
 import { checkRateLimit } from "../lib/rateLimiter";
 import { requireAdmin } from "../lib/requireAdmin";
+import { verifyCsrf } from "../lib/csrf";
 
 const router = Router();
 
@@ -54,7 +55,7 @@ router.get("/admin/contacts", requireAdmin, async (_req, res) => {
   );
 });
 
-router.delete("/admin/contacts/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/contacts/:id", requireAdmin, verifyCsrf, async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "Ongeldig id" });
 

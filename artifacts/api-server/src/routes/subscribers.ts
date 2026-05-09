@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { subscribersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "../lib/requireAdmin";
+import { verifyCsrf } from "../lib/csrf";
 import { ensureInbox, sendVerificationEmail, sendBroadcast } from "../lib/agentmail";
 import { logger } from "../lib/logger";
 
@@ -77,13 +78,13 @@ router.get("/admin/subscribers", requireAdmin, async (_req, res) => {
   return res.json(subs.map((s) => ({ ...s, createdAt: s.createdAt.toISOString() })));
 });
 
-router.delete("/admin/subscribers/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/subscribers/:id", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
   await db.delete(subscribersTable).where(eq(subscribersTable.id, id));
   return res.status(204).send();
 });
 
-router.post("/admin/broadcast", requireAdmin, async (req, res) => {
+router.post("/admin/broadcast", requireAdmin, verifyCsrf, async (req, res) => {
   const { subject, html, text } = req.body;
   if (!subject || !html || !text) return res.status(400).json({ error: "Ontbrekende gegevens" });
 

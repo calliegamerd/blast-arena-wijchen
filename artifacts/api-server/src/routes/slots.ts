@@ -3,6 +3,7 @@ import { db, slotsTable } from "@workspace/db";
 import { CreateSlotBody, UpdateSlotBody } from "@workspace/api-zod";
 import { eq, desc } from "drizzle-orm";
 import { requireAdmin } from "../lib/requireAdmin";
+import { verifyCsrf } from "../lib/csrf";
 
 const router = Router();
 
@@ -36,7 +37,7 @@ router.get("/admin/slots", requireAdmin, async (_req, res) => {
   );
 });
 
-router.post("/admin/slots", requireAdmin, async (req, res) => {
+router.post("/admin/slots", requireAdmin, verifyCsrf, async (req, res) => {
   const parsed = CreateSlotBody.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Ongeldige invoer", details: parsed.error.issues });
@@ -63,7 +64,7 @@ router.post("/admin/slots", requireAdmin, async (req, res) => {
   });
 });
 
-router.patch("/admin/slots/:id", requireAdmin, async (req, res) => {
+router.patch("/admin/slots/:id", requireAdmin, verifyCsrf, async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "Ongeldig id" });
 
@@ -95,7 +96,7 @@ router.patch("/admin/slots/:id", requireAdmin, async (req, res) => {
   });
 });
 
-router.delete("/admin/slots/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/slots/:id", requireAdmin, verifyCsrf, async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "Ongeldig id" });
 

@@ -2,6 +2,8 @@ export type CustomFetchOptions = RequestInit & {
   responseType?: "json" | "text" | "blob" | "auto";
 };
 
+import { addCsrfHeader } from "./csrf";
+
 export type ErrorType<T = unknown> = ApiError<T>;
 
 export type BodyType<T> = T;
@@ -357,6 +359,9 @@ export async function customFetch<T = unknown>(
       headers.set("authorization", `Bearer ${token}`);
     }
   }
+
+  // Attach CSRF token for mutating requests.
+  addCsrfHeader(method, headers);
 
   const requestInfo = { method, url: resolveUrl(input) };
 

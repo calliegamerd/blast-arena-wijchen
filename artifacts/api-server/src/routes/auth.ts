@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { signAdminToken, verifyAdminToken } from "../lib/requireAdmin";
+import { issueCsrfToken, verifyCsrf } from "../lib/csrf";
 
 const router = Router();
 
@@ -21,17 +22,20 @@ router.post("/admin/login", (req, res) => {
 
   res.cookie("adminToken", token, {
     httpOnly: true,
-    sameSite: IS_PROD ? "none" : "lax",
+    sameSite: "lax",
     secure: IS_PROD,
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",
   });
 
-  return res.json({ ok: true });
+  const csrfToken = issueCsrfToken(res);
+
+  return res.json({ ok: true, csrfToken });
 });
 
-router.post("/admin/logout", (_req, res) => {
+router.post("/admin/logout", verifyCsrf, (_req, res) => {
   res.clearCookie("adminToken", { path: "/" });
+  res.clearCookie("csrf_token", { path: "/" });
   return res.json({ ok: true });
 });
 

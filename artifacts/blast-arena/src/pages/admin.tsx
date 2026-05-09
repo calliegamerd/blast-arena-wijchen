@@ -18,6 +18,18 @@ import * as z from "zod";
 
 import logo from "@assets/image-removebg-preview_(78)_1778351584029.png";
 
+function getCsrfToken(): string | null {
+  const match = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("csrf_token="));
+  return match ? decodeURIComponent(match.split("=")[1]) : null;
+}
+
+function csrfHeaders(): Record<string, string> {
+  const token = getCsrfToken();
+  return token ? { "x-csrf-token": token } : {};
+}
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -148,7 +160,11 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
   }, [activeTab]);
 
   const handleLogout = async () => {
-    await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
+    await fetch("/api/admin/logout", {
+      method: "POST",
+      credentials: "include",
+      headers: { ...csrfHeaders() },
+    });
     onLogout();
   };
 
@@ -166,7 +182,11 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
 
   const handleDeleteSubscriber = async (id: number) => {
     if (!confirm("Inschrijving verwijderen?")) return;
-    await fetch(`/api/admin/subscribers/${id}`, { method: "DELETE", credentials: "include" });
+    await fetch(`/api/admin/subscribers/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: { ...csrfHeaders() },
+    });
     setSubscribers((prev) => prev.filter((s) => s.id !== id));
     toast({ title: "Inschrijving verwijderd" });
   };
@@ -240,7 +260,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
       const res = await fetch("/api/admin/broadcast", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...csrfHeaders() },
         body: JSON.stringify({
           subject: data.subject,
           text: data.text,
