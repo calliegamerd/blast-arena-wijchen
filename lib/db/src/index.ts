@@ -11,12 +11,23 @@ if (!process.env.DATABASE_URL) {
 }
 
 const url = process.env.DATABASE_URL;
-const needsSsl = process.env.NODE_ENV === "production" && !url.includes("sslmode=disable");
 
-export const pool = new Pool({
-  connectionString: url,
-  ssl: needsSsl ? { rejectUnauthorized: false } : false,
+// Only inject an ssl option when the URL doesn't already include sslmode.
+// When sslmode is present in the URL (e.g. Neon's sslmode=require&channel_binding=require)
+// pg resolves SSL and channel-binding from the URL itself — adding a separate ssl
+// object would override and break it.
+const hasExplicitSslMode = url.includes("sslmode=");
+const poolConfig: pg.PoolConfig = { connectionString: url };
+if (!hasExplicitSslMode && process.env.NODE_ENV === "production") {
+  poolConfig.ssl = { rejectUnauthorized: false };
+}
+
+export const pool = new Pool(poolConfig);
+
+pool.on("error", (err) => {
+  console.error("pg pool error:", err);
 });
+
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";
