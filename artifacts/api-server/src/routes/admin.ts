@@ -1,16 +1,11 @@
 import { Router } from "express";
 import { db, contactsTable, slotsTable } from "@workspace/db";
-import { eq, count } from "drizzle-orm";
-import { desc } from "drizzle-orm";
+import { count, eq, desc } from "drizzle-orm";
+import { requireAdmin } from "../lib/requireAdmin";
 
 const router = Router();
 
-router.get("/admin/stats", async (req, res) => {
-  const auth = (req as any).auth;
-  if (!auth?.userId) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
+router.get("/admin/stats", requireAdmin, async (_req, res) => {
   const [totalContactsResult] = await db
     .select({ count: count() })
     .from(contactsTable);

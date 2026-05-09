@@ -26,3 +26,8 @@ externalPort = 80
 [[ports]]
 localPort = 25463
 externalPort = 3000
+
+[userenv]
+
+[userenv.shared]
+ADMIN_PASSWORD = "K#r92j3DK29ej29"

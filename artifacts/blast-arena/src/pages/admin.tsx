@@ -1,22 +1,22 @@
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { 
-  useGetAdminStats, 
-  useListContacts, 
+import {
+  useGetAdminStats,
+  useListContacts,
   useDeleteContact,
   useListAdminSlots,
   useCreateSlot,
   useUpdateSlot,
-  useDeleteSlot 
+  useDeleteSlot,
 } from "@workspace/api-client-react";
-import { useClerk } from "@clerk/react";
 import { format } from "date-fns";
+import { nl } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-import logo from "@assets/image_1778350291643.png";
+import logo from "@assets/image-removebg-preview_(78)_1778351584029.png";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,23 +31,77 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 
 const slotSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  startTime: z.string().min(1, "Start time is required"),
-  endTime: z.string().min(1, "End time is required"),
-  capacity: z.coerce.number().min(1, "Capacity must be at least 1"),
+  title: z.string().min(1, "Titel is verplicht"),
+  startTime: z.string().min(1, "Starttijd is verplicht"),
+  endTime: z.string().min(1, "Eindtijd is verplicht"),
+  capacity: z.coerce.number().min(1, "Minimaal 1 plek"),
   status: z.enum(["open", "full", "cancelled"]),
   notes: z.string().optional(),
 });
 
-export default function Admin() {
-  const { signOut } = useClerk();
+function PasswordGate({ onAuth }: { onAuth: () => void }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const r = await fetch("/api/admin/login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (r.ok) {
+        onAuth();
+      } else {
+        setError("Ongeldig wachtwoord.");
+        setPassword("");
+      }
+    } catch {
+      setError("Verbinding mislukt.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex h-screen items-center justify-center bg-background scanlines">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-72">
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full bg-card border border-border/60 text-foreground px-4 py-3 font-mono text-sm focus:outline-none focus:border-primary transition-colors clip-diagonal"
+          autoFocus
+          autoComplete="current-password"
+        />
+        {error && (
+          <p className="text-destructive text-xs font-mono tracking-wider">{error}</p>
+        )}
+        <button
+          type="submit"
+          disabled={loading || !password}
+          className="w-full bg-primary text-black font-bold uppercase tracking-widest py-3 clip-diagonal hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? "..." : "Toegang"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function AdminPanel({ onLogout }: { onLogout: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   const { data: stats, isLoading: loadingStats } = useGetAdminStats();
   const { data: contacts, isLoading: loadingContacts } = useListContacts();
   const { data: slots, isLoading: loadingSlots } = useListAdminSlots();
-  
+
   const deleteContact = useDeleteContact();
   const deleteSlot = useDeleteSlot();
   const createSlot = useCreateSlot();
@@ -69,27 +123,32 @@ export default function Admin() {
     },
   });
 
+  const handleLogout = async () => {
+    await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
+    onLogout();
+  };
+
   const handleDeleteContact = (id: number) => {
-    if (confirm("Delete this contact forever?")) {
+    if (confirm("Contact permanent verwijderen?")) {
       deleteContact.mutate({ id }, {
         onSuccess: () => {
-          toast({ title: "Contact deleted" });
+          toast({ title: "Contact verwijderd" });
           queryClient.invalidateQueries({ queryKey: ["/api/admin/contacts"] });
           queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
-        }
+        },
       });
     }
   };
 
   const handleDeleteSlot = (id: number) => {
-    if (confirm("Delete this slot?")) {
+    if (confirm("Sessie verwijderen?")) {
       deleteSlot.mutate({ id }, {
         onSuccess: () => {
-          toast({ title: "Slot deleted" });
+          toast({ title: "Sessie verwijderd" });
           queryClient.invalidateQueries({ queryKey: ["/api/admin/slots"] });
           queryClient.invalidateQueries({ queryKey: ["/api/slots"] });
           queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
-        }
+        },
       });
     }
   };
@@ -121,157 +180,163 @@ export default function Admin() {
   };
 
   const onSlotSubmit = (data: z.infer<typeof slotSchema>) => {
-    const formattedData = {
+    const formatted = {
       ...data,
       startTime: new Date(data.startTime).toISOString(),
       endTime: new Date(data.endTime).toISOString(),
     };
 
     if (editingSlotId) {
-      updateSlot.mutate({ id: editingSlotId, data: formattedData }, {
+      updateSlot.mutate({ id: editingSlotId, data: formatted }, {
         onSuccess: () => {
-          toast({ title: "Slot updated" });
+          toast({ title: "Sessie bijgewerkt" });
           queryClient.invalidateQueries({ queryKey: ["/api/admin/slots"] });
           queryClient.invalidateQueries({ queryKey: ["/api/slots"] });
           setSlotDialogOpen(false);
-        }
+        },
       });
     } else {
-      createSlot.mutate({ data: formattedData }, {
+      createSlot.mutate({ data: formatted }, {
         onSuccess: () => {
-          toast({ title: "Slot created" });
+          toast({ title: "Sessie aangemaakt" });
           queryClient.invalidateQueries({ queryKey: ["/api/admin/slots"] });
           queryClient.invalidateQueries({ queryKey: ["/api/slots"] });
           queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
           setSlotDialogOpen(false);
-        }
+        },
       });
     }
   };
 
+  const typeLabel = (type: string) => {
+    if (type === "warehouse") return "Locatie";
+    if (type === "partnership") return "Partner";
+    return "Algemeen";
+  };
+
+  const statusLabel = (status: string) => {
+    if (status === "open") return "Open";
+    if (status === "full") return "Vol";
+    return "Geannuleerd";
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-card border-r border-border p-6 flex flex-col">
-        <div className="mb-10">
+      <aside className="w-full md:w-60 bg-card border-r border-border p-6 flex flex-col shrink-0">
+        <div className="mb-8">
           <Link href="/">
-            <img src={logo} alt="BlastArena" className="h-10 mb-2 cursor-pointer" />
+            <img src={logo} alt="BlastArena" className="h-10 cursor-pointer mb-3 drop-shadow-[0_0_8px_rgba(93,222,38,0.4)]" />
           </Link>
-          <div className="flex items-center gap-2 text-primary font-heading tracking-widest text-sm uppercase font-bold">
-            <ShieldAlert className="w-4 h-4" /> COMMAND CENTER
+          <div className="flex items-center gap-2 text-primary font-heading tracking-widest text-xs uppercase font-bold">
+            <ShieldAlert className="w-3 h-3" /> Beheercentrum
           </div>
         </div>
 
-        <nav className="flex-1 space-y-2">
-          <button 
-            className={`w-full text-left px-4 py-3 font-heading uppercase font-bold tracking-wider clip-diagonal transition-colors ${activeTab === 'contacts' ? 'bg-primary text-black' : 'text-muted-foreground hover:text-white hover:bg-white/5'}`}
-            onClick={() => setActiveTab('contacts')}
+        <nav className="flex-1 space-y-1">
+          <button
+            className={`w-full text-left px-4 py-3 font-heading uppercase font-bold tracking-wider text-sm clip-diagonal transition-colors ${activeTab === "contacts" ? "bg-primary text-black" : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
+            onClick={() => setActiveTab("contacts")}
           >
-            Contacts
+            Contacten
           </button>
-          <button 
-            className={`w-full text-left px-4 py-3 font-heading uppercase font-bold tracking-wider clip-diagonal transition-colors ${activeTab === 'slots' ? 'bg-secondary text-white' : 'text-muted-foreground hover:text-white hover:bg-white/5'}`}
-            onClick={() => setActiveTab('slots')}
+          <button
+            className={`w-full text-left px-4 py-3 font-heading uppercase font-bold tracking-wider text-sm clip-diagonal transition-colors ${activeTab === "slots" ? "bg-secondary text-white" : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
+            onClick={() => setActiveTab("slots")}
           >
-            Deployments (Slots)
+            Sessies
           </button>
         </nav>
 
-        <Button 
-          variant="outline" 
-          className="mt-auto border-destructive text-destructive hover:bg-destructive/10 clip-diagonal uppercase font-bold tracking-wider"
-          onClick={() => signOut()}
+        <Button
+          variant="outline"
+          className="mt-auto border-destructive text-destructive hover:bg-destructive/10 clip-diagonal uppercase font-bold tracking-wider text-xs"
+          onClick={handleLogout}
         >
-          <LogOut className="w-4 h-4 mr-2" /> Sign Out
+          <LogOut className="w-3 h-3 mr-2" /> Uitloggen
         </Button>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
-        <h1 className="text-3xl font-black font-heading uppercase text-white mb-8 tracking-widest">
-          {activeTab === 'contacts' ? 'Intel / Contacts' : 'Deployment Schedule'}
+      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+        <h1 className="text-2xl font-black font-heading uppercase text-white mb-6 tracking-widest">
+          {activeTab === "contacts" ? "Contacten" : "Sessies beheren"}
         </h1>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           <Card className="bg-card border-border clip-diagonal">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">Total Intel</CardTitle>
+            <CardHeader className="pb-1 pt-4 px-4">
+              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">Contacten</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-white">{loadingStats ? '-' : stats?.totalContacts}</div>
+            <CardContent className="px-4 pb-4">
+              <div className="text-3xl font-black text-white">{loadingStats ? "-" : stats?.totalContacts}</div>
             </CardContent>
           </Card>
           <Card className="bg-card border-border clip-diagonal">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">HQ Leads</CardTitle>
+            <CardHeader className="pb-1 pt-4 px-4">
+              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">Locaties</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-primary">{loadingStats ? '-' : stats?.warehouseContacts}</div>
+            <CardContent className="px-4 pb-4">
+              <div className="text-3xl font-black text-primary">{loadingStats ? "-" : stats?.warehouseContacts}</div>
             </CardContent>
           </Card>
           <Card className="bg-card border-border clip-diagonal">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">Deployments</CardTitle>
+            <CardHeader className="pb-1 pt-4 px-4">
+              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">Sessies</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-white">{loadingStats ? '-' : stats?.totalSlots}</div>
+            <CardContent className="px-4 pb-4">
+              <div className="text-3xl font-black text-white">{loadingStats ? "-" : stats?.totalSlots}</div>
             </CardContent>
           </Card>
           <Card className="bg-card border-border clip-diagonal">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">Active Ops</CardTitle>
+            <CardHeader className="pb-1 pt-4 px-4">
+              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">Open slots</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-secondary">{loadingStats ? '-' : stats?.openSlots}</div>
+            <CardContent className="px-4 pb-4">
+              <div className="text-3xl font-black text-secondary">{loadingStats ? "-" : stats?.openSlots}</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Tabs Content */}
-        {activeTab === 'contacts' && (
-          <div className="bg-card border border-border p-4">
+        {activeTab === "contacts" && (
+          <div className="bg-card border border-border overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground">Date</TableHead>
-                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground">Type</TableHead>
-                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground">Name</TableHead>
-                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground">Contact</TableHead>
-                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground">Details</TableHead>
-                    <TableHead className="text-right"></TableHead>
+                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground text-xs">Datum</TableHead>
+                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground text-xs">Type</TableHead>
+                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground text-xs">Naam</TableHead>
+                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground text-xs">Contact</TableHead>
+                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground text-xs">Bericht</TableHead>
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loadingContacts ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8">Loading intel...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Laden...</TableCell></TableRow>
                   ) : contacts?.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No intel received yet.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nog geen contacten ontvangen.</TableCell></TableRow>
                   ) : (
                     contacts?.map((c) => (
                       <TableRow key={c.id} className="border-border/50 hover:bg-white/5">
-                        <TableCell className="font-mono text-xs">{format(new Date(c.createdAt), "yyyy-MM-dd HH:mm")}</TableCell>
+                        <TableCell className="font-mono text-xs">{format(new Date(c.createdAt), "dd-MM-yy HH:mm")}</TableCell>
                         <TableCell>
-                          <Badge variant={c.type === 'warehouse' ? 'default' : 'secondary'} className="uppercase text-[10px]">
-                            {c.type}
+                          <Badge variant={c.type === "warehouse" ? "default" : "secondary"} className="uppercase text-[10px]">
+                            {typeLabel(c.type)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="font-bold text-white">{c.name}</TableCell>
+                        <TableCell className="font-bold text-white text-sm">{c.name}</TableCell>
                         <TableCell className="text-sm">
-                          <div>{c.email}</div>
+                          <div className="text-foreground/80">{c.email}</div>
                           {c.phone && <div className="text-muted-foreground text-xs">{c.phone}</div>}
                         </TableCell>
-                        <TableCell className="max-w-[300px]">
-                          {c.type === 'warehouse' && (
-                            <div className="mb-2 text-xs text-primary font-mono">
-                              [Size: {c.warehouseSize || '?'}] [Loc: {c.warehouseLocation || '?'}]
-                            </div>
+                        <TableCell className="max-w-[260px]">
+                          {c.type === "warehouse" && c.warehouseSize && (
+                            <div className="mb-1 text-xs text-primary font-mono">[{c.warehouseSize}] {c.warehouseLocation && `[${c.warehouseLocation}]`}</div>
                           )}
-                          <p className="text-sm truncate text-muted-foreground" title={c.message}>{c.message}</p>
+                          <p className="text-xs truncate text-muted-foreground" title={c.message}>{c.message}</p>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/20 border-0" onClick={() => handleDeleteContact(c.id)}>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/20" onClick={() => handleDeleteContact(c.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </TableCell>
@@ -284,123 +349,94 @@ export default function Admin() {
           </div>
         )}
 
-        {activeTab === 'slots' && (
-          <div className="bg-card border border-border p-4">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="font-heading uppercase text-xl font-bold">Manage Slots</h2>
+        {activeTab === "slots" && (
+          <div className="bg-card border border-border overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b border-border">
+              <span className="font-heading uppercase text-sm font-bold text-muted-foreground tracking-wider">Alle sessies</span>
               <Dialog open={slotDialogOpen} onOpenChange={setSlotDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={openCreateSlot} className="bg-secondary text-white hover:bg-secondary/80 clip-diagonal uppercase font-bold tracking-wider">
-                    <Plus className="w-4 h-4 mr-2" /> New Deployment
+                  <Button onClick={openCreateSlot} className="bg-secondary text-white hover:bg-secondary/80 clip-diagonal uppercase font-bold tracking-wider text-xs h-9">
+                    <Plus className="w-3 h-3 mr-2" /> Nieuwe sessie
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="bg-card border-border sm:max-w-[500px] clip-diagonal rounded-none">
+                <DialogContent className="bg-card border-border sm:max-w-[480px] clip-diagonal rounded-none">
                   <DialogHeader>
-                    <DialogTitle className="font-heading uppercase tracking-widest text-primary text-xl">
-                      {editingSlotId ? "Edit Deployment" : "Plan New Deployment"}
+                    <DialogTitle className="font-heading uppercase tracking-widest text-primary text-lg">
+                      {editingSlotId ? "Sessie bewerken" : "Nieuwe sessie aanmaken"}
                     </DialogTitle>
                   </DialogHeader>
-                  
                   <Form {...slotForm}>
-                    <form onSubmit={slotForm.handleSubmit(onSlotSubmit)} className="space-y-4 mt-4">
-                      <FormField
-                        control={slotForm.control}
-                        name="title"
-                        render={({ field }) => (
+                    <form onSubmit={slotForm.handleSubmit(onSlotSubmit)} className="space-y-4 mt-3">
+                      <FormField control={slotForm.control} name="title" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="uppercase tracking-widest text-xs">Naam sessie</FormLabel>
+                          <FormControl>
+                            <Input className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField control={slotForm.control} name="startTime" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="uppercase tracking-widest text-xs">Title / Mission Name</FormLabel>
+                            <FormLabel className="uppercase tracking-widest text-xs">Starttijd</FormLabel>
                             <FormControl>
-                              <Input className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
+                              <Input type="datetime-local" className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
-                        )}
-                      />
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={slotForm.control}
-                          name="startTime"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="uppercase tracking-widest text-xs">Start Time</FormLabel>
-                              <FormControl>
-                                <Input type="datetime-local" className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={slotForm.control}
-                          name="endTime"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="uppercase tracking-widest text-xs">End Time</FormLabel>
-                              <FormControl>
-                                <Input type="datetime-local" className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={slotForm.control}
-                          name="capacity"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="uppercase tracking-widest text-xs">Max Capacity</FormLabel>
-                              <FormControl>
-                                <Input type="number" min={1} className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={slotForm.control}
-                          name="status"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="uppercase tracking-widest text-xs">Status</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="bg-background border-border clip-diagonal rounded-none text-white">
-                                    <SelectValue placeholder="Select status" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent className="bg-background border-border">
-                                  <SelectItem value="open">Open</SelectItem>
-                                  <SelectItem value="full">Full</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <FormField
-                        control={slotForm.control}
-                        name="notes"
-                        render={({ field }) => (
+                        )} />
+                        <FormField control={slotForm.control} name="endTime" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="uppercase tracking-widest text-xs">Intel Notes</FormLabel>
+                            <FormLabel className="uppercase tracking-widest text-xs">Eindtijd</FormLabel>
                             <FormControl>
-                              <Textarea className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
+                              <Input type="datetime-local" className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
-                        )}
-                      />
-
-                      <div className="pt-4 flex justify-end">
-                        <Button type="submit" disabled={createSlot.isPending || updateSlot.isPending} className="bg-primary text-black hover:bg-primary/80 clip-diagonal uppercase font-bold tracking-wider">
-                          {editingSlotId ? "Update Deployment" : "Launch Deployment"}
+                        )} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField control={slotForm.control} name="capacity" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="uppercase tracking-widest text-xs">Max. deelnemers</FormLabel>
+                            <FormControl>
+                              <Input type="number" min={1} className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={slotForm.control} name="status" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="uppercase tracking-widest text-xs">Status</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-background border-border clip-diagonal rounded-none text-white">
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="bg-background border-border">
+                                <SelectItem value="open">Open</SelectItem>
+                                <SelectItem value="full">Vol</SelectItem>
+                                <SelectItem value="cancelled">Geannuleerd</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      </div>
+                      <FormField control={slotForm.control} name="notes" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="uppercase tracking-widest text-xs">Notities</FormLabel>
+                          <FormControl>
+                            <Textarea className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <div className="pt-2 flex justify-end">
+                        <Button type="submit" disabled={createSlot.isPending || updateSlot.isPending} className="bg-primary text-black hover:bg-primary/80 clip-diagonal uppercase font-bold tracking-wider text-xs">
+                          {editingSlotId ? "Opslaan" : "Aanmaken"}
                         </Button>
                       </div>
                     </form>
@@ -408,43 +444,43 @@ export default function Admin() {
                 </DialogContent>
               </Dialog>
             </div>
-
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground">Mission</TableHead>
-                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground">Schedule</TableHead>
-                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground">Capacity</TableHead>
-                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground">Status</TableHead>
-                    <TableHead className="text-right"></TableHead>
+                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground text-xs">Sessie</TableHead>
+                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground text-xs">Tijdstip</TableHead>
+                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground text-xs">Plekken</TableHead>
+                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground text-xs">Status</TableHead>
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loadingSlots ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-8">Loading schedule...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Laden...</TableCell></TableRow>
                   ) : slots?.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No deployments scheduled.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nog geen sessies ingepland.</TableCell></TableRow>
                   ) : (
                     slots?.map((s) => (
                       <TableRow key={s.id} className="border-border/50 hover:bg-white/5">
-                        <TableCell className="font-bold text-primary">{s.title}</TableCell>
+                        <TableCell className="font-bold text-primary text-sm">{s.title}</TableCell>
                         <TableCell className="font-mono text-xs">
-                          {format(new Date(s.startTime), "MMM do, HH:mm")} - {format(new Date(s.endTime), "HH:mm")}
+                          {format(new Date(s.startTime), "d MMM, HH:mm", { locale: nl })} - {format(new Date(s.endTime), "HH:mm")}
                         </TableCell>
                         <TableCell className="font-mono text-sm">
-                          <span className={s.bookedCount >= s.capacity ? "text-destructive" : "text-white"}>{s.bookedCount}</span> / {s.capacity}
+                          <span className={s.bookedCount >= s.capacity ? "text-destructive" : "text-white"}>{s.bookedCount}</span>
+                          <span className="text-muted-foreground"> / {s.capacity}</span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={s.status === 'open' ? 'default' : s.status === 'full' ? 'destructive' : 'secondary'} className="uppercase text-[10px]">
-                            {s.status}
+                          <Badge variant={s.status === "open" ? "default" : s.status === "full" ? "destructive" : "secondary"} className="uppercase text-[10px]">
+                            {statusLabel(s.status)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button variant="ghost" size="icon" className="text-secondary hover:bg-secondary/20 border-0" onClick={() => openEditSlot(s)}>
+                        <TableCell className="text-right space-x-1">
+                          <Button variant="ghost" size="icon" className="text-secondary hover:bg-secondary/20" onClick={() => openEditSlot(s)}>
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/20 border-0" onClick={() => handleDeleteSlot(s.id)}>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/20" onClick={() => handleDeleteSlot(s.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </TableCell>
@@ -459,4 +495,28 @@ export default function Admin() {
       </main>
     </div>
   );
+}
+
+export default function Admin() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/me", { credentials: "include" })
+      .then((r) => setIsAuthenticated(r.ok))
+      .catch(() => setIsAuthenticated(false));
+  }, []);
+
+  if (isAuthenticated === null) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <PasswordGate onAuth={() => setIsAuthenticated(true)} />;
+  }
+
+  return <AdminPanel onLogout={() => setIsAuthenticated(false)} />;
 }
