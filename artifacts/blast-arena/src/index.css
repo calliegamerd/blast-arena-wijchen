@@ -76,6 +76,21 @@
   * {
     @apply border-border;
     cursor: crosshair;
+    scrollbar-width: thin;
+    scrollbar-color: #1E90FF #111118;
+  }
+  *::-webkit-scrollbar {
+    width: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: #111118;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: #1E90FF;
+    border-radius: 0px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: #5DDE26;
   }
   body {
     @apply font-sans bg-background text-foreground antialiased;
