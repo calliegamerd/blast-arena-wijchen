@@ -2,7 +2,11 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 function getSecret(): string {
-  return process.env.SESSION_SECRET ?? "dev-secret-change-in-prod";
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error("SESSION_SECRET environment variable is required but was not provided.");
+  }
+  return secret;
 }
 
 export function signAdminToken(): string {
@@ -11,7 +15,9 @@ export function signAdminToken(): string {
 
 export function verifyAdminToken(token: string): boolean {
   try {
-    const payload = jwt.verify(token, getSecret()) as { isAdmin?: boolean };
+    const secret = process.env.SESSION_SECRET;
+    if (!secret) return false;
+    const payload = jwt.verify(token, secret) as { isAdmin?: boolean };
     return payload.isAdmin === true;
   } catch {
     return false;

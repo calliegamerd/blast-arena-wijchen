@@ -20,10 +20,24 @@ app.use(
     },
   }),
 );
-const allowedOrigins = process.env.ALLOWED_ORIGIN
-  ? process.env.ALLOWED_ORIGIN.split(",").map((o) => o.trim())
-  : true;
-app.use(cors({ credentials: true, origin: allowedOrigins }));
+
+const IS_PROD = process.env.NODE_ENV === "production";
+
+let corsOrigin: string[] | boolean;
+if (process.env.ALLOWED_ORIGIN) {
+  corsOrigin = process.env.ALLOWED_ORIGIN.split(",").map((o) => o.trim());
+} else if (IS_PROD) {
+  const replitDomains = process.env.REPLIT_DOMAINS;
+  if (replitDomains) {
+    corsOrigin = replitDomains.split(",").map((d) => `https://${d.trim()}`);
+  } else {
+    corsOrigin = false;
+  }
+} else {
+  corsOrigin = true;
+}
+
+app.use(cors({ credentials: true, origin: corsOrigin }));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
