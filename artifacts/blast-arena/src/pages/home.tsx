@@ -19,6 +19,134 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+type SubscribeStep = "email" | "verify" | "done";
+
+function SubscribeModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [step, setStep] = useState<SubscribeStep>("email");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const reset = () => { setStep("email"); setEmail(""); setCode(""); setError(""); };
+
+  const handleClose = () => { reset(); onClose(); };
+
+  const submitEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 409) { setStep("done"); return; }
+        setError(data.error ?? "Er ging iets mis");
+        return;
+      }
+      setStep("verify");
+    } catch {
+      setError("Verbinding mislukt, probeer opnieuw.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/subscribe/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Onjuiste code"); return; }
+      setStep("done");
+    } catch {
+      setError("Verbinding mislukt, probeer opnieuw.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
+      <DialogContent className="bg-card border-border sm:max-w-[420px] rounded-none clip-diagonal">
+        <DialogHeader>
+          <DialogTitle className="font-heading uppercase tracking-widest text-lg">
+            <span className="text-primary">BLAST</span><span className="text-secondary">ARENA</span>
+            <span className="text-white text-sm ml-3 font-normal tracking-wider">Updates ontvangen</span>
+          </DialogTitle>
+        </DialogHeader>
+
+        {step === "email" && (
+          <form onSubmit={submitEmail} className="space-y-4 mt-2">
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Schrijf je in en ontvang als eerste bericht wanneer BlastArena Wijchen opent en klaar is voor actie.
+            </p>
+            <Input
+              type="email"
+              placeholder="jouw@email.nl"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="bg-background border-border focus-visible:ring-primary rounded-none clip-diagonal"
+            />
+            {error && <p className="text-destructive text-xs">{error}</p>}
+            <Button type="submit" disabled={loading || !email} className="w-full bg-primary text-black hover:bg-primary/80 clip-diagonal uppercase font-bold tracking-widest">
+              {loading ? "Bezig..." : "Inschrijven"}
+            </Button>
+          </form>
+        )}
+
+        {step === "verify" && (
+          <form onSubmit={submitCode} className="space-y-4 mt-2">
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              We hebben een 6-cijferige code gestuurd naar <span className="text-white font-mono">{email}</span>. Controleer ook je spam.
+            </p>
+            <Input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="123456"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              required
+              className="bg-background border-border focus-visible:ring-primary rounded-none clip-diagonal font-mono text-xl tracking-[0.5em] text-center"
+            />
+            {error && <p className="text-destructive text-xs">{error}</p>}
+            <Button type="submit" disabled={loading || code.length < 6} className="w-full bg-primary text-black hover:bg-primary/80 clip-diagonal uppercase font-bold tracking-widest">
+              {loading ? "Bezig..." : "Bevestigen"}
+            </Button>
+            <button type="button" onClick={() => { setStep("email"); setCode(""); setError(""); }} className="text-xs text-muted-foreground hover:text-white w-full text-center transition-colors">
+              Ander e-mailadres gebruiken
+            </button>
+          </form>
+        )}
+
+        {step === "done" && (
+          <div className="text-center py-6 space-y-3">
+            <div className="text-5xl">🎯</div>
+            <p className="text-white font-bold font-heading uppercase tracking-widest">Je staat op de lijst!</p>
+            <p className="text-muted-foreground text-sm">We laten het je weten zodra BlastArena Wijchen opent.</p>
+            <Button onClick={handleClose} className="bg-primary text-black hover:bg-primary/80 clip-diagonal uppercase font-bold tracking-widest mt-2">
+              Sluiten
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const contactSchema = z.object({
   name: z.string().min(2, "Naam is verplicht"),
@@ -123,6 +251,7 @@ function ShootingLines() {
 }
 
 export default function Home() {
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
   const { data: slots, isLoading: loadingSlots } = useListSlots();
   const submitContact = useSubmitContact();
   const { toast } = useToast();
@@ -222,9 +351,9 @@ export default function Home() {
             <Button
               size="lg"
               className="bg-primary text-black hover:bg-primary/80 clip-diagonal h-14 px-10 text-base font-bold uppercase tracking-widest shadow-[0_0_24px_rgba(93,222,38,0.4)] transition-all"
-              onClick={() => document.getElementById("contact-form")?.scrollIntoView({ behavior: "smooth" })}
+              onClick={() => setSubscribeOpen(true)}
             >
-              Aanmelden
+              Inschrijven
             </Button>
             <Button
               size="lg"
@@ -501,6 +630,8 @@ export default function Home() {
           &copy; {new Date().getFullYear()} BlastArena Wijchen. Alle rechten voorbehouden.
         </p>
       </footer>
+
+      <SubscribeModal open={subscribeOpen} onClose={() => setSubscribeOpen(false)} />
     </div>
   );
 }

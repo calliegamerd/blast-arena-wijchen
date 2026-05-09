@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, LogOut, Plus, Edit, ShieldAlert } from "lucide-react";
+import { Trash2, LogOut, Plus, Edit, ShieldAlert, Send, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -37,6 +37,11 @@ const slotSchema = z.object({
   capacity: z.coerce.number().min(1, "Minimaal 1 plek"),
   status: z.enum(["open", "full", "cancelled"]),
   notes: z.string().optional(),
+});
+
+const broadcastSchema = z.object({
+  subject: z.string().min(3, "Onderwerp is verplicht"),
+  text: z.string().min(10, "Berichttekst is verplicht"),
 });
 
 function PasswordGate({ onAuth }: { onAuth: () => void }) {
@@ -94,6 +99,13 @@ function PasswordGate({ onAuth }: { onAuth: () => void }) {
   );
 }
 
+type Subscriber = {
+  id: number;
+  email: string;
+  verified: boolean;
+  createdAt: string;
+};
+
 function AdminPanel({ onLogout }: { onLogout: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -107,21 +119,33 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
   const createSlot = useCreateSlot();
   const updateSlot = useUpdateSlot();
 
-  const [activeTab, setActiveTab] = useState<"contacts" | "slots">("contacts");
+  const [activeTab, setActiveTab] = useState<"contacts" | "slots" | "subscribers" | "broadcast">("contacts");
   const [slotDialogOpen, setSlotDialogOpen] = useState(false);
   const [editingSlotId, setEditingSlotId] = useState<number | null>(null);
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [loadingSubscribers, setLoadingSubscribers] = useState(false);
+  const [broadcastSending, setBroadcastSending] = useState(false);
 
   const slotForm = useForm<z.infer<typeof slotSchema>>({
     resolver: zodResolver(slotSchema),
-    defaultValues: {
-      title: "",
-      startTime: "",
-      endTime: "",
-      capacity: 20,
-      status: "open",
-      notes: "",
-    },
+    defaultValues: { title: "", startTime: "", endTime: "", capacity: 20, status: "open", notes: "" },
   });
+
+  const broadcastForm = useForm<z.infer<typeof broadcastSchema>>({
+    resolver: zodResolver(broadcastSchema),
+    defaultValues: { subject: "", text: "" },
+  });
+
+  useEffect(() => {
+    if (activeTab === "subscribers" || activeTab === "broadcast") {
+      setLoadingSubscribers(true);
+      fetch("/api/admin/subscribers", { credentials: "include" })
+        .then((r) => r.json())
+        .then((data) => setSubscribers(data))
+        .catch(() => setSubscribers([]))
+        .finally(() => setLoadingSubscribers(false));
+    }
+  }, [activeTab]);
 
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
@@ -138,6 +162,13 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
         },
       });
     }
+  };
+
+  const handleDeleteSubscriber = async (id: number) => {
+    if (!confirm("Inschrijving verwijderen?")) return;
+    await fetch(`/api/admin/subscribers/${id}`, { method: "DELETE", credentials: "include" });
+    setSubscribers((prev) => prev.filter((s) => s.id !== id));
+    toast({ title: "Inschrijving verwijderd" });
   };
 
   const handleDeleteSlot = (id: number) => {
@@ -180,12 +211,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
   };
 
   const onSlotSubmit = (data: z.infer<typeof slotSchema>) => {
-    const formatted = {
-      ...data,
-      startTime: new Date(data.startTime).toISOString(),
-      endTime: new Date(data.endTime).toISOString(),
-    };
-
+    const formatted = { ...data, startTime: new Date(data.startTime).toISOString(), endTime: new Date(data.endTime).toISOString() };
     if (editingSlotId) {
       updateSlot.mutate({ id: editingSlotId, data: formatted }, {
         onSuccess: () => {
@@ -208,6 +234,35 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
     }
   };
 
+  const onBroadcastSubmit = async (data: z.infer<typeof broadcastSchema>) => {
+    setBroadcastSending(true);
+    try {
+      const res = await fetch("/api/admin/broadcast", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: data.subject,
+          text: data.text,
+          html: `<div style="font-family:sans-serif;background:#0A0A0F;color:#fff;padding:40px;max-width:540px;margin:0 auto">
+            <h1 style="color:#5DDE26;letter-spacing:4px;font-size:24px;margin:0 0 4px">BLAST<span style="color:#1E90FF">ARENA</span></h1>
+            <p style="color:#888;font-size:11px;margin:0 0 28px;letter-spacing:2px">WIJCHEN, NEDERLAND</p>
+            <h2 style="color:#fff;margin:0 0 16px">${data.subject}</h2>
+            <div style="color:#ccc;line-height:1.7;white-space:pre-wrap">${data.text}</div>
+            <p style="color:#555;font-size:11px;margin-top:32px">Je ontvangt dit bericht omdat je je hebt ingeschreven bij BlastArena Wijchen.</p>
+          </div>`,
+        }),
+      });
+      const result = await res.json();
+      toast({ title: `Mail verstuurd naar ${result.sent} abonnees!` });
+      broadcastForm.reset();
+    } catch {
+      toast({ title: "Verzenden mislukt", variant: "destructive" });
+    } finally {
+      setBroadcastSending(false);
+    }
+  };
+
   const typeLabel = (type: string) => {
     if (type === "warehouse") return "Locatie";
     if (type === "partnership") return "Partner";
@@ -219,6 +274,8 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
     if (status === "full") return "Vol";
     return "Geannuleerd";
   };
+
+  const verifiedCount = subscribers.filter((s) => s.verified).length;
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
@@ -233,18 +290,20 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
         </div>
 
         <nav className="flex-1 space-y-1">
-          <button
-            className={`w-full text-left px-4 py-3 font-heading uppercase font-bold tracking-wider text-sm clip-diagonal transition-colors ${activeTab === "contacts" ? "bg-primary text-black" : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
-            onClick={() => setActiveTab("contacts")}
-          >
-            Contacten
-          </button>
-          <button
-            className={`w-full text-left px-4 py-3 font-heading uppercase font-bold tracking-wider text-sm clip-diagonal transition-colors ${activeTab === "slots" ? "bg-secondary text-white" : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
-            onClick={() => setActiveTab("slots")}
-          >
-            Sessies
-          </button>
+          {(["contacts", "slots", "subscribers", "broadcast"] as const).map((tab) => {
+            const labels: Record<string, string> = { contacts: "Contacten", slots: "Sessies", subscribers: "Inschrijvingen", broadcast: "Mail sturen" };
+            const active = activeTab === tab;
+            const colorClass = tab === "slots" ? "bg-secondary text-white" : tab === "subscribers" ? "bg-primary/80 text-black" : tab === "broadcast" ? "bg-primary text-black" : "bg-primary text-black";
+            return (
+              <button
+                key={tab}
+                className={`w-full text-left px-4 py-3 font-heading uppercase font-bold tracking-wider text-sm clip-diagonal transition-colors ${active ? colorClass : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {labels[tab]}
+              </button>
+            );
+          })}
         </nav>
 
         <Button
@@ -258,7 +317,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
 
       <main className="flex-1 p-6 md:p-8 overflow-y-auto">
         <h1 className="text-2xl font-black font-heading uppercase text-white mb-6 tracking-widest">
-          {activeTab === "contacts" ? "Contacten" : "Sessies beheren"}
+          {{ contacts: "Contacten", slots: "Sessies beheren", subscribers: "Inschrijvingen", broadcast: "Mail sturen" }[activeTab]}
         </h1>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
@@ -280,10 +339,10 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
           </Card>
           <Card className="bg-card border-border clip-diagonal">
             <CardHeader className="pb-1 pt-4 px-4">
-              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">Sessies</CardTitle>
+              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">Abonnees</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4">
-              <div className="text-3xl font-black text-white">{loadingStats ? "-" : stats?.totalSlots}</div>
+              <div className="text-3xl font-black text-secondary">{loadingStats ? "-" : verifiedCount || "0"}</div>
             </CardContent>
           </Card>
           <Card className="bg-card border-border clip-diagonal">
@@ -291,7 +350,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
               <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">Open slots</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4">
-              <div className="text-3xl font-black text-secondary">{loadingStats ? "-" : stats?.openSlots}</div>
+              <div className="text-3xl font-black text-white">{loadingStats ? "-" : stats?.openSlots}</div>
             </CardContent>
           </Card>
         </div>
@@ -349,6 +408,52 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
           </div>
         )}
 
+        {activeTab === "subscribers" && (
+          <div className="bg-card border border-border overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <span className="font-heading uppercase text-sm font-bold text-muted-foreground tracking-wider flex items-center gap-2">
+                <Users className="w-4 h-4" /> {verifiedCount} geverifieerd / {subscribers.length} totaal
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground text-xs">E-mail</TableHead>
+                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground text-xs">Status</TableHead>
+                    <TableHead className="font-heading uppercase tracking-wider text-muted-foreground text-xs">Datum</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loadingSubscribers ? (
+                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Laden...</TableCell></TableRow>
+                  ) : subscribers.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Nog geen inschrijvingen.</TableCell></TableRow>
+                  ) : (
+                    subscribers.map((s) => (
+                      <TableRow key={s.id} className="border-border/50 hover:bg-white/5">
+                        <TableCell className="font-mono text-sm text-white">{s.email}</TableCell>
+                        <TableCell>
+                          <Badge variant={s.verified ? "default" : "secondary"} className="uppercase text-[10px]">
+                            {s.verified ? "Geverifieerd" : "Ausstehend"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">{format(new Date(s.createdAt), "dd-MM-yy HH:mm")}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/20" onClick={() => handleDeleteSubscriber(s.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+
         {activeTab === "slots" && (
           <div className="bg-card border border-border overflow-hidden">
             <div className="flex justify-between items-center p-4 border-b border-border">
@@ -370,9 +475,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                       <FormField control={slotForm.control} name="title" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="uppercase tracking-widest text-xs">Naam sessie</FormLabel>
-                          <FormControl>
-                            <Input className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
-                          </FormControl>
+                          <FormControl><Input className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
@@ -380,18 +483,14 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                         <FormField control={slotForm.control} name="startTime" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="uppercase tracking-widest text-xs">Starttijd</FormLabel>
-                            <FormControl>
-                              <Input type="datetime-local" className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
-                            </FormControl>
+                            <FormControl><Input type="datetime-local" className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={slotForm.control} name="endTime" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="uppercase tracking-widest text-xs">Eindtijd</FormLabel>
-                            <FormControl>
-                              <Input type="datetime-local" className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
-                            </FormControl>
+                            <FormControl><Input type="datetime-local" className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -400,9 +499,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                         <FormField control={slotForm.control} name="capacity" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="uppercase tracking-widest text-xs">Max. deelnemers</FormLabel>
-                            <FormControl>
-                              <Input type="number" min={1} className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
-                            </FormControl>
+                            <FormControl><Input type="number" min={1} className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -411,9 +508,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                             <FormLabel className="uppercase tracking-widest text-xs">Status</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <SelectTrigger className="bg-background border-border clip-diagonal rounded-none text-white">
-                                  <SelectValue />
-                                </SelectTrigger>
+                                <SelectTrigger className="bg-background border-border clip-diagonal rounded-none text-white"><SelectValue /></SelectTrigger>
                               </FormControl>
                               <SelectContent className="bg-background border-border">
                                 <SelectItem value="open">Open</SelectItem>
@@ -428,9 +523,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                       <FormField control={slotForm.control} name="notes" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="uppercase tracking-widest text-xs">Notities</FormLabel>
-                          <FormControl>
-                            <Textarea className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} />
-                          </FormControl>
+                          <FormControl><Textarea className="bg-background border-border focus-visible:ring-primary clip-diagonal rounded-none" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
@@ -490,6 +583,57 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                 </TableBody>
               </Table>
             </div>
+          </div>
+        )}
+
+        {activeTab === "broadcast" && (
+          <div className="max-w-2xl">
+            <div className="bg-card border border-border p-6 mb-4">
+              <div className="flex items-center gap-2 mb-1 text-muted-foreground text-xs font-heading uppercase tracking-widest">
+                <Users className="w-3 h-3" /> Ontvangers
+              </div>
+              <p className="text-white font-bold text-lg">
+                {loadingSubscribers ? "Laden..." : `${verifiedCount} geverifieerde abonnee${verifiedCount !== 1 ? "s" : ""}`}
+              </p>
+              {verifiedCount === 0 && !loadingSubscribers && (
+                <p className="text-muted-foreground text-xs mt-1">Nog geen geverifieerde abonnees. Inschrijvingen via de website worden hier weergegeven.</p>
+              )}
+            </div>
+
+            <Form {...broadcastForm}>
+              <form onSubmit={broadcastForm.handleSubmit(onBroadcastSubmit)} className="space-y-4">
+                <FormField control={broadcastForm.control} name="subject" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="uppercase tracking-widest text-xs">Onderwerp</FormLabel>
+                    <FormControl>
+                      <Input placeholder="bijv. BlastArena opent binnenkort!" className="bg-card border-border focus-visible:ring-primary rounded-none" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={broadcastForm.control} name="text" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="uppercase tracking-widest text-xs">Berichttekst</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Schrijf hier je bericht..."
+                        className="bg-card border-border focus-visible:ring-primary rounded-none min-h-[180px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <Button
+                  type="submit"
+                  disabled={broadcastSending || verifiedCount === 0}
+                  className="bg-primary text-black hover:bg-primary/80 clip-diagonal uppercase font-bold tracking-wider"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  {broadcastSending ? "Versturen..." : `Stuur naar ${verifiedCount} abonnee${verifiedCount !== 1 ? "s" : ""}`}
+                </Button>
+              </form>
+            </Form>
           </div>
         )}
       </main>
