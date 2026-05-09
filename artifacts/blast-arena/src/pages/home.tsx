@@ -194,7 +194,7 @@ export default function Home() {
         <GelParticles />
         <ShootingLines />
 
-        <div className="relative z-20 px-4 max-w-5xl mx-auto" style={{ marginLeft: "8%", marginTop: "6rem" }}>
+        <div className="relative z-20 px-4 max-w-5xl mx-auto text-center flex flex-col items-center" style={{ marginTop: "6rem" }}>
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
@@ -276,28 +276,6 @@ export default function Home() {
               <p className="text-muted-foreground text-sm leading-relaxed">Boek sessies eenvoudig via de app, verzamel je team en bereid je voor op actie. Onbeperkt spelen voor een vast maandbedrag.</p>
               <div className="mt-6 text-secondary font-heading uppercase tracking-widest text-xs font-bold">Binnenkort beschikbaar</div>
             </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Banner section */}
-      <section className="relative py-0 overflow-hidden z-10" style={{ height: "320px" }}>
-        <div className="absolute inset-0">
-          <img src={banner} alt="BlastArena banner" className="w-full h-full object-cover object-center" />
-          <div className="absolute inset-0 bg-background/60" />
-        </div>
-        <div className="relative z-10 h-full flex items-center justify-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="text-center px-4"
-          >
-            <div className="text-4xl md:text-5xl font-black text-white uppercase tracking-widest drop-shadow-[0_0_20px_rgba(93,222,38,0.6)]">
-              <span className="text-primary">BLAST</span>
-              <span className="text-secondary"> ARENA</span>
-            </div>
-            <p className="text-muted-foreground font-heading tracking-[0.25em] uppercase text-sm mt-3">Wijchen, Nederland</p>
           </motion.div>
         </div>
       </section>
