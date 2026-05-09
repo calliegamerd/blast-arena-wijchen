@@ -27,12 +27,17 @@ let corsOrigin: string[] | boolean;
 if (process.env.ALLOWED_ORIGIN) {
   corsOrigin = process.env.ALLOWED_ORIGIN.split(",").map((o) => o.trim());
 } else if (IS_PROD) {
-  const replitDomains = process.env.REPLIT_DOMAINS;
-  if (replitDomains) {
-    corsOrigin = replitDomains.split(",").map((d) => `https://${d.trim()}`);
-  } else {
-    corsOrigin = false;
+  const origins: string[] = [];
+  if (process.env.REPLIT_DOMAINS) {
+    origins.push(...process.env.REPLIT_DOMAINS.split(",").map((d) => `https://${d.trim()}`));
   }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    origins.push(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+  }
+  if (process.env.VERCEL_URL) {
+    origins.push(`https://${process.env.VERCEL_URL}`);
+  }
+  corsOrigin = origins.length > 0 ? origins : false;
 } else {
   corsOrigin = true;
 }

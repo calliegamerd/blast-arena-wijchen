@@ -1,0 +1,9 @@
+{
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm --filter @workspace/blast-arena run build",
+  "outputDirectory": "artifacts/blast-arena/dist/public",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}
