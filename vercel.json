@@ -1,6 +1,6 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm run typecheck:libs && pnpm --filter @workspace/blast-arena run build",
+  "buildCommand": "pnpm -w run typecheck:libs && pnpm --filter @workspace/blast-arena run build",
   "outputDirectory": "artifacts/blast-arena/dist/public",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },
