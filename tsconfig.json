@@ -1,20 +1,16 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
-    "types": ["node"],
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "esModuleInterop": true
-  },
-  "include": ["src"],
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
   "references": [
     {
-      "path": "../../lib/db"
+      "path": "./lib/db"
     },
     {
-      "path": "../../lib/api-zod"
+      "path": "./lib/api-client-react"
+    },
+    {
+      "path": "./lib/api-zod"
     }
   ]
 }
