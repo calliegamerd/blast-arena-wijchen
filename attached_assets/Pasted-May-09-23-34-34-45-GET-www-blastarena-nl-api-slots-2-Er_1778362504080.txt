@@ -1,0 +1,105 @@
+May 09 23:34:34.45
+GET
+---
+www.blastarena.nl
+/api/slots
+2
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+May 09 23:34:29.74
+GET
+500
+www.blastarena.nl
+/api/slots
+2
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+May 09 23:34:27.03
+GET
+500
+www.blastarena.nl
+/api/slots
+2
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+May 09 23:34:25.33
+GET
+500
+www.blastarena.nl
+/api/slots
+2
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+May 09 23:33:49.17
+POST
+500
+www.blastarena.nl
+/api/subscribe
+2
+Error: Failed query: select "id", "email", "verified", "verify_code", "verify_expires", "agentmail_message_id", "created_at" from "subscribers" where "subscribers"."email" = $1 params: callenhanekamp@gmail.com at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:60165:20
+May 09 23:32:47.79
+GET
+404
+www.blastarena.nl
+/api/swagger.json
+{"level":30,"time":1778362367827,"pid":4,"hostname":"169.254.5.175","req":{"id":10,"method":"GET","url":"/api/swagger.json"},"res":{"statusCode":404},"responseTime":2,"msg":"request completed"}
+May 09 23:32:40.75
+GET
+500
+www.blastarena.nl
+/api/slots
+2
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+May 09 23:32:35.92
+GET
+500
+www.blastarena.nl
+/api/slots
+2
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+May 09 23:32:33.07
+GET
+500
+www.blastarena.nl
+/api/slots
+2
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+May 09 23:32:31.20
+GET
+500
+www.blastarena.nl
+/api/slots
+2
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+May 09 23:32:15.05
+GET
+500
+www.blastarena.nl
+/api/slots
+2
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+May 09 23:32:10.22
+GET
+500
+www.blastarena.nl
+/api/slots
+2
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+May 09 23:32:06.73
+GET
+500
+www.blastarena.nl
+/api/slots
+2
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+May 09 23:32:04.85
+GET
+500
+www.blastarena.nl
+/api/slots
+2
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+May 09 23:32:02.21
+GET
+500
+www.blastarena.nl
+/api/slots
+3
+Error: Failed query: select "id", "title", "start_time", "end_time", "capacity", "booked_count", "status", "notes", "created_at" from "slots" order by "slots"."start_time" params: at NodePgPreparedQuery.queryWithCache (file:///var/task/api/app.mjs:48031:15) at process.processTicksAndRejections (node:internal/process/task_queues:104:5) at async file:///var/task/api/app.mjs:48264:22 at async file:///var/task/api/app.mjs:59965:17
+No more logs to show within selected timeline
