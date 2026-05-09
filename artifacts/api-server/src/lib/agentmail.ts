@@ -8,9 +8,25 @@ function headers() {
   };
 }
 
+async function checkOk(res: Response, label: string): Promise<unknown> {
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error(
+      `AgentMail ${label} failed (${res.status}): ${JSON.stringify(body)}`,
+    );
+  }
+  return body;
+}
+
 export async function ensureInbox(): Promise<string> {
+  if (!process.env.AGENTMAIL_API_KEY) {
+    throw new Error("AGENTMAIL_API_KEY is not set");
+  }
+
   const listRes = await fetch(`${BASE}/inboxes`, { headers: headers() });
-  const list = await listRes.json() as { inboxes: { username: string; address: string }[] };
+  const list = (await checkOk(listRes, "list inboxes")) as {
+    inboxes: { username: string; address: string }[];
+  };
   const existing = list.inboxes.find((i) => i.username === INBOX_USERNAME);
   if (existing) return existing.address;
 
@@ -19,7 +35,9 @@ export async function ensureInbox(): Promise<string> {
     headers: headers(),
     body: JSON.stringify({ username: INBOX_USERNAME }),
   });
-  const created = await createRes.json() as { address: string };
+  const created = (await checkOk(createRes, "create inbox")) as {
+    address: string;
+  };
   return created.address;
 }
 
@@ -28,6 +46,10 @@ export async function sendVerificationEmail(
   code: string,
   fromAddress: string,
 ): Promise<string> {
+  if (!process.env.AGENTMAIL_API_KEY) {
+    throw new Error("AGENTMAIL_API_KEY is not set");
+  }
+
   const res = await fetch(`${BASE}/inboxes/${INBOX_USERNAME}/messages`, {
     method: "POST",
     headers: headers(),
@@ -61,7 +83,7 @@ export async function sendVerificationEmail(
       `,
     }),
   });
-  const msg = await res.json() as { id: string };
+  const msg = (await checkOk(res, "send message")) as { id: string };
   return msg.id;
 }
 
@@ -72,9 +94,13 @@ export async function sendBroadcast(
   htmlBody: string,
   textBody: string,
 ): Promise<void> {
+  if (!process.env.AGENTMAIL_API_KEY) {
+    throw new Error("AGENTMAIL_API_KEY is not set");
+  }
+
   await Promise.all(
-    subscribers.map((email) =>
-      fetch(`${BASE}/inboxes/${INBOX_USERNAME}/messages`, {
+    subscribers.map(async (email) => {
+      const res = await fetch(`${BASE}/inboxes/${INBOX_USERNAME}/messages`, {
         method: "POST",
         headers: headers(),
         body: JSON.stringify({
@@ -83,7 +109,8 @@ export async function sendBroadcast(
           text: textBody,
           html: htmlBody,
         }),
-      }),
-    ),
+      });
+      await checkOk(res, `broadcast to ${email}`);
+    }),
   );
 }
