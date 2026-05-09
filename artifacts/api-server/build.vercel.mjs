@@ -31,6 +31,7 @@ await esbuild({
     "re2",
     "bufferutil",
     "utf-8-validate",
+    "@x402/fetch",
   ],
   sourcemap: false,
   plugins: [
