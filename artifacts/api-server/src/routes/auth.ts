@@ -1,12 +1,20 @@
 import { Router } from "express";
 import { signAdminToken, verifyAdminToken } from "../lib/requireAdmin";
 import { issueCsrfToken, verifyCsrf } from "../lib/csrf";
+import { checkRateLimit } from "../lib/rateLimiter";
 
 const router = Router();
 
 const IS_PROD = process.env.NODE_ENV === "production";
 
 router.post("/admin/login", (req, res) => {
+  const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "unknown";
+  const rate = checkRateLimit(ip);
+  if (!rate.allowed) {
+    res.setHeader("Retry-After", String(rate.retryAfterSeconds));
+    return res.status(429).json({ error: `Te veel pogingen. Probeer het over ${Math.ceil(rate.retryAfterSeconds / 60)} minuten opnieuw.` });
+  }
+
   const { password } = req.body;
   const adminPassword = process.env.ADMIN_PASSWORD;
 
