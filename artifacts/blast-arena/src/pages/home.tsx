@@ -375,7 +375,7 @@ export default function Home() {
               Meer dan<br />een spel
             </h2>
             <p className="text-muted-foreground text-base mb-6 leading-relaxed max-w-md">
-              BlastArena Wijchen wordt geen gewoon speelcentrum. Het wordt een indoor gel blaster arena vol actie, ontworpen voor gezinnen, vriendengroepen en bedrijfsuitjes. De locatie opent binnenkort — schrijf je in en wees er als eerste bij.
+              BlastArena Wijchen wordt geen gewoon speelcentrum. Het wordt een indoor gel blaster arena vol actie, ontworpen voor gezinnen, vriendengroepen en bedrijfsuitjes. De locatie opent binnenkort. Schrijf je in en wees er als eerste bij.
             </p>
             <div className="w-20 h-[2px] bg-primary mt-8" />
           </motion.div>
