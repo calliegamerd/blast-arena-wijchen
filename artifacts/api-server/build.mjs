@@ -100,6 +100,7 @@ async function buildAll() {
       "puppeteer",
       "puppeteer-core",
       "electron",
+      "@x402/fetch",
     ],
     sourcemap: "linked",
     plugins: [
