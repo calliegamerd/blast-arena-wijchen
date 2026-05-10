@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { useListSlots, useSubmitContact } from "@workspace/api-client-react";
+import { useSubmitContact } from "@workspace/api-client-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { format } from "date-fns";
-import { nl } from "date-fns/locale";
 
 import logo from "@assets/image-removebg-preview_(78)_1778351584029.png";
 import heroBg from "@assets/ChatGPT_Image_9_mei_2026,_20_37_08_1778351835002.png";
@@ -17,8 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type SubscribeStep = "email" | "verify" | "done";
@@ -252,7 +248,6 @@ function ShootingLines() {
 
 export default function Home() {
   const [subscribeOpen, setSubscribeOpen] = useState(false);
-  const { data: slots, isLoading: loadingSlots } = useListSlots();
   const submitContact = useSubmitContact();
   const { toast } = useToast();
   const { scrollYProgress } = useScroll();
@@ -294,12 +289,6 @@ export default function Home() {
   };
 
   const isWarehouse = form.watch("type") === "warehouse";
-
-  const statusLabel = (status: string) => {
-    if (status === "open") return "Beschikbaar";
-    if (status === "full") return "Vol";
-    return "Geannuleerd";
-  };
 
   return (
     <div className="relative w-full bg-background text-foreground selection:bg-primary selection:text-black">
@@ -386,7 +375,7 @@ export default function Home() {
               Meer dan<br />een spel
             </h2>
             <p className="text-muted-foreground text-base mb-6 leading-relaxed max-w-md">
-              BlastArena Wijchen is geen gewoon speelcentrum. Het is een indoor gel blaster arena vol actie, ontworpen voor gezinnen, vriendengroepen en bedrijfsuitjes. Via onze app boek je een maandelijks abonnement en speel je onbeperkt mee in open slots.
+              BlastArena Wijchen wordt geen gewoon speelcentrum. Het wordt een indoor gel blaster arena vol actie, ontworpen voor gezinnen, vriendengroepen en bedrijfsuitjes. De locatie opent binnenkort — schrijf je in en wees er als eerste bij.
             </p>
             <div className="w-20 h-[2px] bg-primary mt-8" />
           </motion.div>
@@ -406,63 +395,6 @@ export default function Home() {
               <div className="mt-6 text-secondary font-heading uppercase tracking-widest text-xs font-bold">Binnenkort beschikbaar</div>
             </div>
           </motion.div>
-        </div>
-      </section>
-
-      {/* Slots */}
-      <section className="py-24 px-4 bg-background relative z-10 border-y border-border">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-12"
-            style={{ paddingLeft: "3%" }}
-          >
-            <div className="text-secondary font-heading tracking-[0.2em] uppercase text-xs mb-3 font-bold">Reserveer je plek</div>
-            <h2 className="text-4xl md:text-5xl font-black text-white uppercase">Komende sessies</h2>
-          </motion.div>
-
-          {loadingSlots ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-48 bg-card animate-pulse clip-diagonal border border-border" />
-              ))}
-            </div>
-          ) : slots?.length ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {slots.map((slot) => (
-                <Card key={slot.id} className="bg-card border-border clip-diagonal overflow-hidden hover:border-primary transition-colors">
-                  <CardHeader className="pb-2 bg-background/40 border-b border-border/50">
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="font-heading uppercase text-lg text-primary">{slot.title}</CardTitle>
-                      <Badge
-                        variant={slot.status === "open" ? "default" : "secondary"}
-                        className="uppercase font-bold tracking-wider text-[10px]"
-                      >
-                        {statusLabel(slot.status)}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    <p className="text-muted-foreground font-mono text-sm mb-4">
-                      {format(new Date(slot.startTime), "d MMM, HH:mm", { locale: nl })} -{" "}
-                      {format(new Date(slot.endTime), "HH:mm")}
-                    </p>
-                    <div className="flex justify-between items-center text-sm font-bold">
-                      <span className="text-white uppercase tracking-wider">Capaciteit</span>
-                      <span className="text-secondary">{slot.bookedCount} / {slot.capacity}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16 border border-border clip-diagonal bg-card">
-              <p className="text-muted-foreground font-heading text-xl uppercase tracking-widest">Nog geen sessies gepland.</p>
-              <p className="text-muted-foreground/60 text-sm mt-2">Kom binnenkort terug.</p>
-            </div>
-          )}
         </div>
       </section>
 
